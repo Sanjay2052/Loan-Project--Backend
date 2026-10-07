@@ -117,9 +117,21 @@ const updateMember = async (req, res) => {
   }
 };
 
-// Delete a member
 const deleteMember = async (req, res) => {
   try {
+    const Loan = require("../models/Loan");
+    const activeLoans = await Loan.countDocuments({
+      member: req.params.id,
+      status: "active",
+    });
+
+    if (activeLoans > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete user with active loans",
+      });
+    }
+
     const member = await Member.findByIdAndDelete(req.params.id);
 
     if (!member) {

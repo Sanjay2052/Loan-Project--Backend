@@ -111,6 +111,19 @@ const updateCommitteeMember = async (req, res) => {
 // Delete committee member
 const deleteCommitteeMember = async (req, res) => {
   try {
+    const Loan = require("../models/Loan");
+    const activeLoans = await Loan.countDocuments({
+      committeeMember: req.params.id,
+      status: "active",
+    });
+
+    if (activeLoans > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete committee member with active loans",
+      });
+    }
+
     const member = await CommitteeMember.findByIdAndDelete(req.params.id);
 
     if (!member) {

@@ -141,7 +141,7 @@ const addPayment = async (req, res) => {
     const { amount, paymentDate, paymentMethod, referenceNumber, notes } = req.body;
     const paymentAmount = Number(amount);
 
-    if (!paymentAmount || paymentAmount <= 0) {
+    if (amount === undefined || amount === null || Number.isNaN(paymentAmount) || paymentAmount < 0) {
       return res.status(400).json({ success: false, message: "Valid payment amount is required" });
     }
 
