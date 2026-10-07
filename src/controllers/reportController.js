@@ -1,6 +1,5 @@
 const Member = require("../models/Member");
 const Loan = require("../models/Loan");
-const Payment = require("../models/Payment");
 
 const getReports = async (req, res) => {
   try {
@@ -9,7 +8,6 @@ const getReports = async (req, res) => {
       activeLoans,
       completedLoans,
       loanSummary,
-      paymentSummary,
     ] = await Promise.all([
       Member.countDocuments(),
 
@@ -37,17 +35,6 @@ const getReports = async (req, res) => {
           },
         },
       ]),
-
-      Payment.aggregate([
-        {
-          $group: {
-            _id: null,
-            totalCollections: {
-              $sum: "$amount",
-            },
-          },
-        },
-      ]),
     ]);
 
     res.json({
@@ -68,9 +55,6 @@ const getReports = async (req, res) => {
 
         totalOutstanding:
           loanSummary[0]?.totalOutstanding || 0,
-
-        totalCollections:
-          paymentSummary[0]?.totalCollections || 0,
       },
     });
   } catch (error) {

@@ -15,6 +15,11 @@ const memberSchema = new mongoose.Schema(
       trim: true,
     },
 
+    committeeMember: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CommitteeMember",
+    },
+
     phone: {
       type: String,
       trim: true,

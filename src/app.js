@@ -6,6 +6,9 @@ const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/authRoutes");
 const loanRoutes = require("./routes/loanRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const userRoutes = require("./routes/userRoutes");
+const committeeMemberRoutes = require("./routes/committeeMemberRoutes");
+const memberRoutes = require("./routes/memberRoutes");
 
 const app = express();
 
@@ -42,5 +45,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/reports", reportRoutes);
 
 app.use("/api/loans", loanRoutes);
+
+app.use("/api/users", userRoutes);
+
+app.use("/api/committee-members", committeeMemberRoutes);
+
+app.use("/api/members", memberRoutes);
 
 module.exports = app;

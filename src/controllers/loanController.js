@@ -4,45 +4,18 @@ const Member = require("../models/Member");
 const createLoan = async (req, res) => {
   try {
     const {
-      memberId,
-      loanNumber,
-      loanAmount,
-      expectedPayment,
-      paymentFrequency,
+      name,
+      committeeMember,
       startDate,
-      notes,
+      loanAmount,
+      paymentFrequency,
     } = req.body;
 
-    if (
-      !memberId ||
-      !loanNumber ||
-      !loanAmount ||
-      !startDate
-    ) {
+    // Validation
+    if (!name || !startDate || !loanAmount) {
       return res.status(400).json({
         success: false,
-        message:
-          "Member, loan number, loan amount and start date are required",
-      });
-    }
-
-    const member = await Member.findById(memberId);
-
-    if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: "Member not found",
-      });
-    }
-
-    const existingLoan = await Loan.findOne({
-      loanNumber,
-    });
-
-    if (existingLoan) {
-      return res.status(409).json({
-        success: false,
-        message: "Loan number already exists",
+        message: "User name, start date and loan amount are required",
       });
     }
 
@@ -55,33 +28,51 @@ const createLoan = async (req, res) => {
       });
     }
 
+    // Find existing member by name
+    let member = await Member.findOne({ name });
+
+    // Create member if not exists
+    if (!member) {
+      member = await Member.create({
+        memberId: `MEM-${Date.now()}`,
+        name,
+        committeeMember,
+        status: "active",
+      });
+    }
+
+    // Generate loan number
+    const loanNumber = `LOAN-${Date.now()}`;
+
+    // Create loan
     const loan = await Loan.create({
       member: member._id,
       loanNumber,
       loanAmount: amount,
       totalPaid: 0,
       remainingAmount: amount,
-      expectedPayment: Number(expectedPayment || 0),
       paymentFrequency: paymentFrequency || "weekly",
       startDate,
       status: "active",
-      notes,
       createdBy: req.admin._id,
     });
 
     const populatedLoan = await Loan.findById(loan._id)
-      .populate("member", "memberId name phone")
+      .populate("member", "memberId name")
       .populate("createdBy", "name email");
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Loan created successfully",
       loan: populatedLoan,
     });
+
   } catch (error) {
-    res.status(500).json({
+    console.error("Create loan error:", error);
+
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Server error",
     });
   }
 };
