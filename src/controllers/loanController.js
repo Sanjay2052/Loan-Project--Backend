@@ -1,5 +1,6 @@
 const Loan = require("../models/Loan");
 const Member = require("../models/Member");
+const Payment = require("../models/Payment");
 
 const createLoan = async (req, res) => {
   try {
@@ -122,8 +123,72 @@ const getLoanById = async (req, res) => {
   }
 };
 
+const addPayment = async (req, res) => {
+  try {
+    const loan = await Loan.findById(req.params.loanId);
+    if (!loan) {
+      return res.status(404).json({ success: false, message: "Loan not found" });
+    }
+
+    const { amount, paymentDate, paymentMethod, referenceNumber, notes } = req.body;
+    const paymentAmount = Number(amount);
+
+    if (!paymentAmount || paymentAmount <= 0) {
+      return res.status(400).json({ success: false, message: "Valid payment amount is required" });
+    }
+
+    if (paymentAmount > loan.remainingAmount) {
+      return res.status(400).json({ success: false, message: "Collection cannot exceed remaining amount" });
+    }
+
+    const payment = await Payment.create({
+      loan: loan._id,
+      amount: paymentAmount,
+      paymentDate: paymentDate || Date.now(),
+      paymentMethod,
+      referenceNumber,
+      notes,
+      collectedBy: req.admin._id
+    });
+
+    loan.totalPaid += paymentAmount;
+    loan.remainingAmount -= paymentAmount;
+    
+    if (loan.remainingAmount <= 0) {
+      loan.status = "completed";
+    }
+
+    await loan.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Payment added successfully",
+      payment
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getPayments = async (req, res) => {
+  try {
+    const payments = await Payment.find({ loan: req.params.loanId })
+      .populate("collectedBy", "name email")
+      .sort({ paymentDate: -1 });
+
+    res.json({
+      success: true,
+      payments
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createLoan,
   getLoans,
   getLoanById,
+  addPayment,
+  getPayments
 };
