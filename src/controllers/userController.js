@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
 
 // Create user
 const createUser = async (req, res) => {
@@ -19,6 +20,10 @@ const createUser = async (req, res) => {
       message: "User created successfully",
       data: user,
     });
+
+    clearCacheByPrefix('/api/users');
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -92,6 +97,10 @@ const updateUser = async (req, res) => {
       message: "User updated successfully",
       data: user,
     });
+
+    clearCacheByPrefix('/api/users');
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -117,6 +126,10 @@ const deleteUser = async (req, res) => {
       success: true,
       message: "User deleted successfully",
     });
+
+    clearCacheByPrefix('/api/users');
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
   } catch (error) {
     res.status(500).json({
       success: false,

@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { cacheMiddleware } = require("../middleware/cacheMiddleware");
 const {
   createMember,
   getMembers,
@@ -10,10 +11,10 @@ const {
 
 router.route("/")
   .post(createMember)
-  .get(getMembers);
+  .get(cacheMiddleware(30000), getMembers);
 
 router.route("/:id")
-  .get(getMemberById)
+  .get(cacheMiddleware(30000), getMemberById)
   .put(updateMember)
   .delete(deleteMember);
 

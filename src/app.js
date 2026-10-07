@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const compression = require("compression");
+const performanceMiddleware = require("./middleware/performanceMiddleware");
 
 const authRoutes = require("./routes/authRoutes");
 const loanRoutes = require("./routes/loanRoutes");
@@ -12,6 +14,8 @@ const memberRoutes = require("./routes/memberRoutes");
 
 const app = express();
 
+app.use(performanceMiddleware);
+app.use(compression());
 app.use(helmet());
 
 app.use(

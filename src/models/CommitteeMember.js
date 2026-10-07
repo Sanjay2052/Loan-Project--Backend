@@ -18,4 +18,8 @@ const committeeMemberSchema = new mongoose.Schema(
   }
 );
 
+committeeMemberSchema.index({
+  name: 1,
+});
+
 module.exports = mongoose.model("CommitteeMember", committeeMemberSchema);

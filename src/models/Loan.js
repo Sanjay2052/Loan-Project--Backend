@@ -8,6 +8,12 @@ const loanSchema = new mongoose.Schema(
       required: true,
     },
 
+    committeeMember: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CommitteeMember",
+      required: false,
+    },
+
     loanNumber: {
       type: String,
       required: true,
@@ -71,5 +77,10 @@ const loanSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+loanSchema.index({ member: 1 });
+loanSchema.index({ committeeMember: 1 });
+loanSchema.index({ status: 1 });
+loanSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Loan", loanSchema);

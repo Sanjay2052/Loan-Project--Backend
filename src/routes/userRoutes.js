@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { cacheMiddleware } = require("../middleware/cacheMiddleware");
 const {
   createUser,
   getUsers,
@@ -7,6 +8,7 @@ const {
   updateUser,
   deleteUser,
 } = require("../controllers/userController");
+const { getLoansByMember } = require("../controllers/loanController");
 
 // Optionally, you can add auth middleware here if these endpoints should be protected:
 // const protect = require("../middleware/authMiddleware");
@@ -14,11 +16,13 @@ const {
 
 router.route("/")
   .post(createUser)
-  .get(getUsers);
+  .get(cacheMiddleware(30000), getUsers);
 
 router.route("/:id")
-  .get(getUserById)
+  .get(cacheMiddleware(30000), getUserById)
   .put(updateUser)
   .delete(deleteUser);
+
+router.get("/:id/loans", cacheMiddleware(15000), getLoansByMember);
 
 module.exports = router;

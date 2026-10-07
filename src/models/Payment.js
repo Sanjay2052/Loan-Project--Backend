@@ -33,4 +33,9 @@ const paymentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+paymentSchema.index({
+  loan: 1,
+  paymentDate: -1,
+});
+
 module.exports = mongoose.model('Payment', paymentSchema);

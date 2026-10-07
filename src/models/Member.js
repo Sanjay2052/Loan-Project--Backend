@@ -41,4 +41,12 @@ const memberSchema = new mongoose.Schema(
   }
 );
 
+memberSchema.index({
+  name: 1,
+});
+
+memberSchema.index({
+  phone: 1,
+});
+
 module.exports = mongoose.model("Member", memberSchema);

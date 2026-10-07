@@ -1,4 +1,5 @@
 const Member = require("../models/Member");
+const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
 
 // Create member
 const createMember = async (req, res) => {
@@ -26,6 +27,10 @@ const createMember = async (req, res) => {
       message: "Member created successfully",
       data: member,
     });
+
+    clearCacheByPrefix('/api/members');
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -99,6 +104,10 @@ const updateMember = async (req, res) => {
       message: "Member updated successfully",
       data: member,
     });
+
+    clearCacheByPrefix('/api/members');
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -124,6 +133,10 @@ const deleteMember = async (req, res) => {
       success: true,
       message: "Member deleted successfully",
     });
+
+    clearCacheByPrefix('/api/members');
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
   } catch (error) {
     res.status(500).json({
       success: false,

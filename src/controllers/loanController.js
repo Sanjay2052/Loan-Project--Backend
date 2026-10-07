@@ -1,6 +1,7 @@
 const Loan = require("../models/Loan");
 const Member = require("../models/Member");
 const Payment = require("../models/Payment");
+const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
 
 const createLoan = async (req, res) => {
   try {
@@ -48,6 +49,7 @@ const createLoan = async (req, res) => {
     // Create loan
     const loan = await Loan.create({
       member: member._id,
+      committeeMember: committeeMember,
       loanNumber,
       loanAmount: amount,
       totalPaid: 0,
@@ -62,11 +64,14 @@ const createLoan = async (req, res) => {
       .populate("member", "memberId name")
       .populate("createdBy", "name email");
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       message: "Loan created successfully",
       loan: populatedLoan,
     });
+
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
 
   } catch (error) {
     console.error("Create loan error:", error);
@@ -81,9 +86,12 @@ const createLoan = async (req, res) => {
 const getLoans = async (req, res) => {
   try {
     const loans = await Loan.find()
+      .select('loanNumber member committeeMember loanAmount totalPaid remainingAmount status paymentFrequency startDate')
       .populate("member", "memberId name phone")
+      .populate("committeeMember", "name phoneNumber")
       .populate("createdBy", "name email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       success: true,
@@ -102,7 +110,7 @@ const getLoanById = async (req, res) => {
   try {
     const loan = await Loan.findById(req.params.id)
       .populate("member", "memberId name phone address")
-      .populate("createdBy", "name email");
+      .lean();
 
     if (!loan) {
       return res.status(404).json({
@@ -165,6 +173,9 @@ const addPayment = async (req, res) => {
       message: "Payment added successfully",
       payment
     });
+
+    clearCacheByPrefix('/api/loans');
+    clearCacheByPrefix('/api/reports');
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -172,13 +183,66 @@ const addPayment = async (req, res) => {
 
 const getPayments = async (req, res) => {
   try {
+    const loan = await Loan.findById(req.params.loanId);
+    if (!loan) {
+      return res.status(404).json({ success: false, message: "Loan not found" });
+    }
+
     const payments = await Payment.find({ loan: req.params.loanId })
       .populate("collectedBy", "name email")
-      .sort({ paymentDate: -1 });
+      .sort({ paymentDate: 1 }); // Sort oldest to newest
+
+    let balance = loan.loanAmount;
+    const history = payments.map((payment) => {
+      balance -= payment.amount;
+      return {
+        ...payment.toObject(),
+        remainingBalance: balance,
+      };
+    });
+
+    // We can reverse it back so newest is first in the list
+    history.reverse();
 
     res.json({
       success: true,
-      payments
+      payments: history
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getLoansByMember = async (req, res) => {
+  try {
+    const loans = await Loan.find({ member: req.params.id })
+      .select('loanNumber loanAmount totalPaid remainingAmount status startDate')
+      .populate("member", "memberId name phone address")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      count: loans.length,
+      loans
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getLoansByCommitteeMember = async (req, res) => {
+  try {
+    const loans = await Loan.find({ committeeMember: req.params.id })
+      .select('loanNumber member loanAmount totalPaid remainingAmount status')
+      .populate("member", "memberId name phone address")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      count: loans.length,
+      loans
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -190,5 +254,7 @@ module.exports = {
   getLoans,
   getLoanById,
   addPayment,
-  getPayments
+  getPayments,
+  getLoansByMember,
+  getLoansByCommitteeMember
 };

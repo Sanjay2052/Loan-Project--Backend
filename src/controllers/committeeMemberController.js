@@ -1,4 +1,5 @@
 const CommitteeMember = require("../models/CommitteeMember");
+const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
 
 // Create committee member
 const createCommitteeMember = async (req, res) => {
@@ -19,6 +20,9 @@ const createCommitteeMember = async (req, res) => {
       message: "Committee Member created successfully",
       data: member,
     });
+
+    clearCacheByPrefix('/api/committee-members');
+    clearCacheByPrefix('/api/loans');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -92,6 +96,9 @@ const updateCommitteeMember = async (req, res) => {
       message: "Committee Member updated successfully",
       data: member,
     });
+
+    clearCacheByPrefix('/api/committee-members');
+    clearCacheByPrefix('/api/loans');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -117,6 +124,9 @@ const deleteCommitteeMember = async (req, res) => {
       success: true,
       message: "Committee Member deleted successfully",
     });
+
+    clearCacheByPrefix('/api/committee-members');
+    clearCacheByPrefix('/api/loans');
   } catch (error) {
     res.status(500).json({
       success: false,
