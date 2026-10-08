@@ -139,10 +139,72 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// Get loans by user
+const getLoansByUser = async (req, res) => {
+  try {
+    const Loan = require("../models/Loan");
+    const Member = require("../models/Member");
+
+    const user = await User.findById(req.params.id).lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    let memberId = user.member;
+
+    if (!memberId) {
+      let member = await Member.findOne({ phone: user.phoneNumber }).lean();
+      if (!member) {
+        member = await Member.findOne({ name: user.name }).lean();
+      }
+
+      if (member) {
+        memberId = member._id;
+        await User.findByIdAndUpdate(user._id, { member: memberId });
+        // Also update member phone if missing
+        if (!member.phone && user.phoneNumber) {
+          await Member.findByIdAndUpdate(memberId, { phone: user.phoneNumber });
+        }
+      }
+    }
+
+    if (!memberId) {
+      return res.json({
+        success: true,
+        count: 0,
+        loans: [],
+      });
+    }
+
+    const loans = await Loan.find({ member: memberId })
+      .select('loanNumber member loanAmount totalPaid remainingAmount status paymentFrequency startDate')
+      .populate('member', 'memberId name phone address')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      count: loans.length,
+      loans,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createUser,
   getUsers,
   getUserById,
   updateUser,
   deleteUser,
+  getLoansByUser,
 };

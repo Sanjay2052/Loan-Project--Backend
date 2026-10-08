@@ -7,8 +7,8 @@ const {
   getUserById,
   updateUser,
   deleteUser,
+  getLoansByUser,
 } = require("../controllers/userController");
-const { getLoansByMember } = require("../controllers/loanController");
 
 // Optionally, you can add auth middleware here if these endpoints should be protected:
 // const protect = require("../middleware/authMiddleware");
@@ -23,6 +23,6 @@ router.route("/:id")
   .put(updateUser)
   .delete(deleteUser);
 
-router.get("/:id/loans", cacheMiddleware(15000), getLoansByMember);
+router.get("/:id/loans", cacheMiddleware(15000), getLoansByUser);
 
 module.exports = router;
