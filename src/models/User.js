@@ -14,8 +14,7 @@ const userSchema = new mongoose.Schema(
     },
     place: {
       type: String,
-      required: true,
-      trim: true,
+      default: ''
     },
     member: {
       type: mongoose.Schema.Types.ObjectId,
@@ -25,9 +24,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    savingsAmount: {
+    initialSavingsAmount: {
       type: Number,
       default: 0,
+      min: 0,
     },
   },
   {

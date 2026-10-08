@@ -4,7 +4,7 @@ const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
 // Create user
 const createUser = async (req, res) => {
   try {
-    const { name, phoneNumber, place, isSavingUser, savingsAmount } = req.body;
+    let { name, phoneNumber, place, isSavingUser, initialSavingsAmount } = req.body;
 
     if (!name || !phoneNumber || !place) {
       return res.status(400).json({
@@ -13,7 +13,18 @@ const createUser = async (req, res) => {
       });
     }
 
-    const user = await User.create({ name, phoneNumber, place, isSavingUser, savingsAmount });
+    if (isSavingUser) {
+      if (!initialSavingsAmount || initialSavingsAmount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Savings amount is required for a saving user'
+        });
+      }
+    } else {
+      initialSavingsAmount = 0;
+    }
+
+    const user = await User.create({ name, phoneNumber, place, isSavingUser, initialSavingsAmount });
 
     res.status(201).json({
       success: true,
@@ -81,7 +92,7 @@ const updateUser = async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      { ...req.body, initialSavingsAmount: req.body.isSavingUser ? req.body.initialSavingsAmount : 0 },
       { new: true, runValidators: true }
     );
 

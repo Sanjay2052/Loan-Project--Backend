@@ -35,11 +35,38 @@ const createCommitteeMember = async (req, res) => {
 // Get all committee members
 const getCommitteeMembers = async (req, res) => {
   try {
-    const members = await CommitteeMember.find().sort({ createdAt: -1 });
+    const members = await CommitteeMember.find().sort({ createdAt: -1 }).lean();
+    const Loan = require("../models/Loan");
+    const Saving = require("../models/Saving");
+
+    const memberIds = members.map(m => m._id);
+
+    const loanTotals = await Loan.aggregate([
+      { $match: { committeeMember: { $in: memberIds } } },
+      { $group: { _id: "$committeeMember", totalLoanAmount: { $sum: "$loanAmount" } } }
+    ]);
+    const loanMap = {};
+    loanTotals.forEach(l => { loanMap[l._id.toString()] = l.totalLoanAmount; });
+
+    const savingTotals = await Saving.aggregate([
+      { $match: { committeeMember: { $in: memberIds } } },
+      { $group: { _id: "$committeeMember", totalSavingsAmount: { $sum: "$amount" } } }
+    ]);
+    const savingMap = {};
+    savingTotals.forEach(s => { savingMap[s._id.toString()] = s.totalSavingsAmount; });
+
+    const enhancedMembers = members.map(member => {
+      const mId = member._id.toString();
+      return {
+        ...member,
+        totalLoanAmount: loanMap[mId] || 0,
+        totalSavingsAmount: savingMap[mId] || 0,
+      };
+    });
     res.json({
       success: true,
-      count: members.length,
-      data: members,
+      count: enhancedMembers.length,
+      data: enhancedMembers,
     });
   } catch (error) {
     res.status(500).json({
@@ -53,7 +80,7 @@ const getCommitteeMembers = async (req, res) => {
 // Get a single committee member
 const getCommitteeMemberById = async (req, res) => {
   try {
-    const member = await CommitteeMember.findById(req.params.id);
+    const member = await CommitteeMember.findById(req.params.id).lean();
 
     if (!member) {
       return res.status(404).json({
@@ -62,9 +89,43 @@ const getCommitteeMemberById = async (req, res) => {
       });
     }
 
+    const Loan = require("../models/Loan");
+    const Saving = require("../models/Saving");
+
+    const loans = await Loan.find({ committeeMember: member._id })
+      .populate('member', 'name')
+      .select('member loanAmount')
+      .lean();
+
+    const savings = await Saving.find({ committeeMember: member._id })
+      .populate('user', 'name')
+      .select('user amount')
+      .lean();
+
+    const totalLoanAmount = loans.reduce((sum, l) => sum + (l.loanAmount || 0), 0);
+    const totalSavingsAmount = savings.reduce((sum, s) => sum + (s.amount || 0), 0);
+
+    const formattedLoans = loans.map(l => ({
+      _id: l._id,
+      name: l.member ? l.member.name : 'Unknown',
+      amount: l.loanAmount
+    }));
+
+    const formattedSavings = savings.map(s => ({
+      _id: s._id,
+      name: s.user ? s.user.name : 'Unknown',
+      amount: s.amount
+    }));
+
     res.json({
       success: true,
-      data: member,
+      data: {
+        ...member,
+        totalLoanAmount,
+        totalSavingsAmount,
+        loans: formattedLoans,
+        savings: formattedSavings
+      },
     });
   } catch (error) {
     res.status(500).json({
