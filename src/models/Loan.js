@@ -5,68 +5,75 @@ const loanSchema = new mongoose.Schema(
     member: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Member",
-      required: true,
+      required: true
     },
-
     committeeMember: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CommitteeMember",
-      required: false,
+      required: true
     },
-
     loanNumber: {
       type: String,
       required: true,
       unique: true,
-      trim: true,
+      trim: true
     },
-
-    loanAmount: {
+    loanType: {
+      type: String,
+      enum: ["weekly", "monthly"],
+      required: true
+    },
+    requestedAmount: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0
     },
-
+    amountGiven: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    weeklyAmount: {
+      type: Number,
+      default: 0
+    },
+    monthlyInterest: {
+      type: Number,
+      default: 0
+    },
+    totalToCollect: {
+      type: Number,
+      required: true
+    },
     totalPaid: {
       type: Number,
-      default: 0,
-      min: 0,
+      default: 0
     },
-
+    principalPaid: {
+      type: Number,
+      default: 0
+    },
+    interestPaid: {
+      type: Number,
+      default: 0
+    },
     remainingAmount: {
       type: Number,
-      required: true,
-      min: 0,
+      default: 0
     },
-
-    expectedPayment: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    paymentFrequency: {
-      type: String,
-      enum: ["daily", "weekly", "monthly", "custom"],
-      default: "weekly",
-    },
-
-    startDate: {
-      type: Date,
-      required: true,
-    },
-
     status: {
       type: String,
       enum: ["active", "completed", "cancelled"],
-      default: "active",
+      default: "active"
     },
-
+    startDate: {
+      type: Date,
+      required: true
+    },
     notes: {
       type: String,
       trim: true,
     },
-
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",

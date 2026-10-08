@@ -20,6 +20,11 @@ const paymentSchema = new mongoose.Schema({
     enum: ['Cash', 'UPI', 'Bank'],
     default: 'Cash',
   },
+  collectionType: {
+    type: String,
+    enum: ["regular", "principal", "interest"],
+    default: "regular"
+  },
   referenceNumber: {
     type: String,
   },

@@ -6,56 +6,63 @@ const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
 const createLoan = async (req, res) => {
   try {
     const {
-      name,
+      member,
       committeeMember,
-      startDate,
-      loanAmount,
-      paymentFrequency,
+      loanType,
+      requestedAmount,
     } = req.body;
 
-    // Validation
-    if (!name || !startDate || !loanAmount) {
+    const amount = Number(requestedAmount);
+
+    if (amount <= 0 || Number.isNaN(amount)) {
       return res.status(400).json({
         success: false,
-        message: "User name, start date and loan amount are required",
+        message: "Valid requested amount is required",
       });
     }
 
-    const amount = Number(loanAmount);
-
-    if (amount <= 0) {
+    if (!member || !committeeMember || !loanType) {
       return res.status(400).json({
         success: false,
-        message: "Loan amount must be greater than zero",
+        message: "Member, Committee Member, and Loan Type are required",
       });
     }
 
-    // Find existing member by name
-    let member = await Member.findOne({ name });
-
-    // Create member if not exists
-    if (!member) {
-      member = await Member.create({
-        memberId: `MEM-${Date.now()}`,
-        name,
-        committeeMember,
-        status: "active",
-      });
+    const memberExists = await Member.findById(member);
+    if (!memberExists) {
+      return res.status(404).json({ success: false, message: "Member not found" });
     }
 
-    // Generate loan number
+    let amountGiven = amount;
+    let totalToCollect = amount;
+    let weeklyAmount = 0;
+    let monthlyInterest = 0;
+
+    if (loanType === 'weekly') {
+      amountGiven = amount * 0.9;
+      weeklyAmount = amount / 10;
+    } else if (loanType === 'monthly') {
+      amountGiven = amount;
+      monthlyInterest = amount * 0.1;
+    }
+
     const loanNumber = `LOAN-${Date.now()}`;
 
-    // Create loan
     const loan = await Loan.create({
-      member: member._id,
-      committeeMember: committeeMember,
+      member,
+      committeeMember,
       loanNumber,
-      loanAmount: amount,
+      loanType,
+      requestedAmount: amount,
+      amountGiven,
+      weeklyAmount,
+      monthlyInterest,
+      totalToCollect,
       totalPaid: 0,
+      principalPaid: 0,
+      interestPaid: 0,
       remainingAmount: amount,
-      paymentFrequency: paymentFrequency || "weekly",
-      startDate,
+      startDate: new Date(),
       status: "active",
       createdBy: req.admin._id,
     });
@@ -86,7 +93,7 @@ const createLoan = async (req, res) => {
 const getLoans = async (req, res) => {
   try {
     const loans = await Loan.find()
-      .select('loanNumber member committeeMember loanAmount totalPaid remainingAmount status paymentFrequency startDate')
+      .select('loanNumber member committeeMember loanType requestedAmount totalPaid principalPaid interestPaid remainingAmount status startDate')
       .populate("member", "memberId name phone")
       .populate("committeeMember", "name phoneNumber")
       .populate("createdBy", "name email")
@@ -138,26 +145,36 @@ const addPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Loan not found" });
     }
 
-    const { amount, committeeMember } = req.body;
+    const { amount, committeeMember, collectionType } = req.body;
     const paymentAmount = Number(amount);
 
     if (amount === undefined || amount === null || Number.isNaN(paymentAmount) || paymentAmount < 0) {
       return res.status(400).json({ success: false, message: "Valid payment amount is required" });
     }
 
-    if (paymentAmount > loan.remainingAmount) {
-      return res.status(400).json({ success: false, message: "Collection cannot exceed remaining amount" });
+    const type = collectionType || 'regular';
+
+    if (type !== 'interest' && paymentAmount > loan.remainingAmount) {
+      return res.status(400).json({ success: false, message: "Collection cannot exceed remaining principal amount" });
     }
 
     const payment = await Payment.create({
       loan: loan._id,
       amount: paymentAmount,
       committeeMember,
+      collectionType: type,
       collectedBy: req.admin._id
     });
 
-    loan.totalPaid += paymentAmount;
-    loan.remainingAmount -= paymentAmount;
+    if (type === 'interest') {
+      loan.interestPaid += paymentAmount;
+    } else if (type === 'principal') {
+      loan.principalPaid += paymentAmount;
+      loan.remainingAmount -= paymentAmount;
+    } else {
+      loan.totalPaid += paymentAmount;
+      loan.remainingAmount -= paymentAmount;
+    }
     
     if (loan.remainingAmount <= 0) {
       loan.status = "completed";
@@ -211,7 +228,7 @@ const getPayments = async (req, res) => {
 const getLoansByMember = async (req, res) => {
   try {
     const loans = await Loan.find({ member: req.params.id })
-      .select('loanNumber loanAmount totalPaid remainingAmount status startDate')
+      .select('loanNumber loanType requestedAmount amountGiven totalPaid principalPaid interestPaid remainingAmount status startDate')
       .populate("member", "memberId name phone address")
       .sort({ createdAt: -1 })
       .lean();
@@ -229,7 +246,7 @@ const getLoansByMember = async (req, res) => {
 const getLoansByCommitteeMember = async (req, res) => {
   try {
     const loans = await Loan.find({ committeeMember: req.params.id })
-      .select('loanNumber member loanAmount totalPaid remainingAmount status')
+      .select('loanNumber member loanType requestedAmount totalPaid principalPaid interestPaid remainingAmount status')
       .populate("member", "memberId name phone address")
       .sort({ createdAt: -1 })
       .lean();
@@ -282,29 +299,32 @@ const editPayment = async (req, res) => {
 
       await payment.save({ session });
 
-      const result = await Payment.aggregate([
-        {
-          $match: {
-            loan: loan._id
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            totalPaid: {
-              $sum: '$amount'
-            }
-          }
-        }
+      const totalPaidResult = await Payment.aggregate([
+        { $match: { loan: loan._id, collectionType: 'regular' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
       ]).session(session);
 
-      const totalPaid = result.length > 0 ? result[0].totalPaid : 0;
+      const principalPaidResult = await Payment.aggregate([
+        { $match: { loan: loan._id, collectionType: 'principal' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]).session(session);
 
-      loan.totalPaid = totalPaid;
+      const interestPaidResult = await Payment.aggregate([
+        { $match: { loan: loan._id, collectionType: 'interest' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]).session(session);
 
-      loan.remainingAmount = Math.max(0, loan.loanAmount - totalPaid);
+      loan.totalPaid = totalPaidResult.length > 0 ? totalPaidResult[0].total : 0;
+      loan.principalPaid = principalPaidResult.length > 0 ? principalPaidResult[0].total : 0;
+      loan.interestPaid = interestPaidResult.length > 0 ? interestPaidResult[0].total : 0;
 
-      loan.status = loan.remainingAmount === 0 ? 'completed' : 'active';
+      if (loan.loanType === 'monthly') {
+        loan.remainingAmount = Math.max(0, loan.requestedAmount - loan.principalPaid);
+      } else {
+        loan.remainingAmount = Math.max(0, loan.requestedAmount - loan.totalPaid);
+      }
+
+      loan.status = loan.remainingAmount <= 0 ? 'completed' : 'active';
 
       await loan.save({ session });
     });
@@ -328,20 +348,30 @@ const updateLoan = async (req, res) => {
     const loan = await Loan.findById(req.params.id);
     if (!loan) return res.status(404).json({ success: false, message: "Loan not found" });
 
-    const { loanAmount, paymentFrequency, startDate, committeeMember } = req.body;
+    const { requestedAmount, loanType, committeeMember } = req.body;
     
-    const newAmount = Number(loanAmount);
-    if (newAmount < loan.totalPaid) {
-      return res.status(400).json({ success: false, message: "Loan amount cannot be less than total paid amount" });
+    if (requestedAmount) {
+      const newAmount = Number(requestedAmount);
+      if (loan.loanType === 'monthly' && newAmount < loan.principalPaid) {
+        return res.status(400).json({ success: false, message: "Requested amount cannot be less than principal paid" });
+      }
+      if (loan.loanType === 'weekly' && newAmount < loan.totalPaid) {
+        return res.status(400).json({ success: false, message: "Requested amount cannot be less than total paid" });
+      }
+      loan.requestedAmount = newAmount;
+      loan.totalToCollect = newAmount;
     }
 
-    loan.loanAmount = newAmount;
-    if (paymentFrequency) loan.paymentFrequency = paymentFrequency;
-    if (startDate) loan.startDate = startDate;
+    if (loanType) loan.loanType = loanType;
     if (committeeMember) loan.committeeMember = committeeMember;
 
-    loan.remainingAmount = Math.max(0, loan.loanAmount - loan.totalPaid);
-    loan.status = loan.remainingAmount === 0 ? 'completed' : 'active';
+    if (loan.loanType === 'monthly') {
+      loan.remainingAmount = Math.max(0, loan.requestedAmount - loan.principalPaid);
+    } else {
+      loan.remainingAmount = Math.max(0, loan.requestedAmount - loan.totalPaid);
+    }
+    
+    loan.status = loan.remainingAmount <= 0 ? 'completed' : 'active';
     await loan.save();
 
     res.json({ success: true, message: 'Loan updated successfully', loan });

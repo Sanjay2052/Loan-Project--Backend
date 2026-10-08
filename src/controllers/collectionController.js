@@ -121,7 +121,8 @@ const getTodayCollection = async (req, res) => {
     const todayLoanGiven = todayLoans[0]?.total || 0;
     const todayExpense = todayExpenses[0]?.total || 0;
 
-    const availableBalance = oldBalance + totalCollection - todayLoanGiven - todayExpense;
+    const balanceBeforeOutgoing = oldBalance + totalCollection;
+    const availableBalance = balanceBeforeOutgoing - todayLoanGiven - todayExpense;
 
     res.json({
       success: true,
@@ -130,6 +131,7 @@ const getTodayCollection = async (req, res) => {
       totalSavingsCollection,
       totalCollection,
       oldBalance,
+      balanceBeforeOutgoing,
       todayLoanGiven,
       todayExpense,
       availableBalance,
