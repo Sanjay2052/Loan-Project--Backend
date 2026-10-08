@@ -21,6 +21,9 @@ const getTodayCollection = async (req, res) => {
     const end = new Date(endStr);
 
     const Saving = require("../models/Saving");
+    const Loan = require("../models/Loan");
+    const Expense = require("../models/Expense");
+    const User = require("../models/User");
 
     // Aggregate Payments (Loans)
     const loanResult = await Payment.aggregate([
@@ -73,12 +76,63 @@ const getTodayCollection = async (req, res) => {
     const totalSavingsCollection = committeeMembers.reduce((sum, m) => sum + m.todaySavingsCollection, 0);
     const totalCollection = totalLoanCollection + totalSavingsCollection;
 
+    // Calculate Old Balance
+    const pastPayments = await Payment.aggregate([
+      { $match: { paymentDate: { $lt: start } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const pastSavings = await Saving.aggregate([
+      { $match: { savingDate: { $lt: start } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const allInitialSavings = await User.aggregate([
+      { $group: { _id: null, total: { $sum: '$initialSavingsAmount' } } }
+    ]);
+    const pastLoans = await Loan.aggregate([
+      { $match: { createdAt: { $lt: start } } },
+      { $group: { _id: null, total: { $sum: '$loanAmount' } } }
+    ]);
+    const pastExpenses = await Expense.aggregate([
+      { $match: { expenseDate: { $lt: start } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+
+    const cashInPast = 
+      (pastPayments[0]?.total || 0) + 
+      (pastSavings[0]?.total || 0) + 
+      (allInitialSavings[0]?.total || 0);
+
+    const cashOutPast = 
+      (pastLoans[0]?.total || 0) + 
+      (pastExpenses[0]?.total || 0);
+
+    const oldBalance = cashInPast - cashOutPast;
+
+    // Calculate Today's Loan Given & Expenses
+    const todayLoans = await Loan.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: null, total: { $sum: '$loanAmount' } } }
+    ]);
+    const todayExpenses = await Expense.aggregate([
+      { $match: { expenseDate: { $gte: start, $lte: end } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+
+    const todayLoanGiven = todayLoans[0]?.total || 0;
+    const todayExpense = todayExpenses[0]?.total || 0;
+
+    const availableBalance = oldBalance + totalCollection - todayLoanGiven - todayExpense;
+
     res.json({
       success: true,
       date: new Date(),
       totalLoanCollection,
       totalSavingsCollection,
       totalCollection,
+      oldBalance,
+      todayLoanGiven,
+      todayExpense,
+      availableBalance,
       committeeMembers,
     });
   } catch (error) {
