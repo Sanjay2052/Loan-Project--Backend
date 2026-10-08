@@ -12,6 +12,7 @@ const userRoutes = require("./routes/userRoutes");
 const committeeMemberRoutes = require("./routes/committeeMemberRoutes");
 const memberRoutes = require("./routes/memberRoutes");
 const collectionRoutes = require("./routes/collectionRoutes");
+const savingRoutes = require("./routes/savingRoutes");
 
 const app = express();
 
@@ -58,5 +59,7 @@ app.use("/api/committee-members", committeeMemberRoutes);
 app.use("/api/members", memberRoutes);
 
 app.use("/api/collections", collectionRoutes);
+
+app.use("/api/savings", savingRoutes);
 
 module.exports = app;

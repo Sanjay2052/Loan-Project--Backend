@@ -21,6 +21,14 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Member",
     },
+    isSavingUser: {
+      type: Boolean,
+      default: false,
+    },
+    savingsAmount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

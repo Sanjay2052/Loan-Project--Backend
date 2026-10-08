@@ -4,7 +4,7 @@ const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
 // Create user
 const createUser = async (req, res) => {
   try {
-    const { name, phoneNumber, place } = req.body;
+    const { name, phoneNumber, place, isSavingUser, savingsAmount } = req.body;
 
     if (!name || !phoneNumber || !place) {
       return res.status(400).json({
@@ -13,7 +13,7 @@ const createUser = async (req, res) => {
       });
     }
 
-    const user = await User.create({ name, phoneNumber, place });
+    const user = await User.create({ name, phoneNumber, place, isSavingUser, savingsAmount });
 
     res.status(201).json({
       success: true,
@@ -22,8 +22,8 @@ const createUser = async (req, res) => {
     });
 
     clearCacheByPrefix('/api/users');
-    clearCacheByPrefix('/api/loans');
     clearCacheByPrefix('/api/reports');
+    clearCacheByPrefix('/api/savings');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -99,8 +99,8 @@ const updateUser = async (req, res) => {
     });
 
     clearCacheByPrefix('/api/users');
-    clearCacheByPrefix('/api/loans');
     clearCacheByPrefix('/api/reports');
+    clearCacheByPrefix('/api/savings');
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -128,8 +128,8 @@ const deleteUser = async (req, res) => {
     });
 
     clearCacheByPrefix('/api/users');
-    clearCacheByPrefix('/api/loans');
     clearCacheByPrefix('/api/reports');
+    clearCacheByPrefix('/api/savings');
   } catch (error) {
     res.status(500).json({
       success: false,
