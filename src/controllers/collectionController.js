@@ -20,60 +20,66 @@ const getTodayCollection = async (req, res) => {
     const start = new Date(startStr);
     const end = new Date(endStr);
 
-    const result = await Payment.aggregate([
-      {
-        $match: {
-          paymentDate: {
-            $gte: start,
-            $lte: end,
-          },
-        },
-      },
-      {
-        $group: {
-          _id: '$committeeMember',
-          todayCollection: {
-            $sum: '$amount',
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'committeemembers',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'committeeMember',
-        },
-      },
-      {
-        $unwind: '$committeeMember',
-      },
-      {
-        $project: {
-          _id: 0,
-          committeeMemberId: '$committeeMember._id',
-          name: '$committeeMember.name',
-          phoneNumber: '$committeeMember.phoneNumber',
-          todayCollection: 1,
-        },
-      },
-      {
-        $sort: {
-          todayCollection: -1,
-        },
-      },
+    const Saving = require("../models/Saving");
+
+    // Aggregate Payments (Loans)
+    const loanResult = await Payment.aggregate([
+      { $match: { paymentDate: { $gte: start, $lte: end } } },
+      { $group: { _id: '$committeeMember', todayCollection: { $sum: '$amount' } } }
     ]);
 
-    const totalCollection = result.reduce(
-      (total, item) => total + item.todayCollection,
-      0
-    );
+    // Aggregate Savings
+    const savingResult = await Saving.aggregate([
+      { $match: { savingDate: { $gte: start, $lte: end } } },
+      { $group: { _id: '$committeeMember', todayCollection: { $sum: '$amount' } } }
+    ]);
+
+    const committeeMemberIds = new Set();
+    const loanMap = {};
+    const savingMap = {};
+
+    loanResult.forEach(item => {
+      if (item._id) {
+        committeeMemberIds.add(item._id.toString());
+        loanMap[item._id.toString()] = item.todayCollection;
+      }
+    });
+
+    savingResult.forEach(item => {
+      if (item._id) {
+        committeeMemberIds.add(item._id.toString());
+        savingMap[item._id.toString()] = item.todayCollection;
+      }
+    });
+
+    const members = await CommitteeMember.find({
+      _id: { $in: Array.from(committeeMemberIds) }
+    }).lean();
+
+    const committeeMembers = members.map(m => {
+      const loanCol = loanMap[m._id.toString()] || 0;
+      const savCol = savingMap[m._id.toString()] || 0;
+      return {
+        committeeMemberId: m._id,
+        name: m.name,
+        phoneNumber: m.phoneNumber,
+        todayLoanCollection: loanCol,
+        todaySavingsCollection: savCol,
+        todayCollection: loanCol + savCol
+      };
+    }).sort((a, b) => b.todayCollection - a.todayCollection);
+
+    const totalLoanCollection = committeeMembers.reduce((sum, m) => sum + m.todayLoanCollection, 0);
+    const totalSavingsCollection = committeeMembers.reduce((sum, m) => sum + m.todaySavingsCollection, 0);
+    const totalCollection = totalLoanCollection + totalSavingsCollection;
 
     res.json({
       success: true,
       date: new Date(),
+      totalLoanCollection,
+      totalSavingsCollection,
       totalCollection,
-      committeeMembers: result,
+      committeeMembers,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -101,6 +107,8 @@ const getTodayCommitteeCollection = async (req, res) => {
     const start = new Date(startStr);
     const end = new Date(endStr);
 
+    const Saving = require("../models/Saving");
+
     const committeeMember = await CommitteeMember.findById(committeeMemberId).select('_id name phoneNumber');
 
     if (!committeeMember) {
@@ -109,10 +117,7 @@ const getTodayCommitteeCollection = async (req, res) => {
 
     const rawCollections = await Payment.find({
       committeeMember: committeeMemberId,
-      paymentDate: {
-        $gte: start,
-        $lte: end,
-      },
+      paymentDate: { $gte: start, $lte: end },
     })
       .populate({
         path: 'loan',
@@ -125,26 +130,42 @@ const getTodayCommitteeCollection = async (req, res) => {
       .sort({ paymentDate: 1 })
       .lean();
 
+    const rawSavings = await Saving.find({
+      committeeMember: committeeMemberId,
+      savingDate: { $gte: start, $lte: end },
+    })
+      .populate('user', 'name')
+      .sort({ savingDate: 1 })
+      .lean();
+
     const collections = rawCollections.map((payment) => ({
       _id: payment._id,
       member: payment.loan && payment.loan.member ? payment.loan.member : null,
       loanNumber: payment.loan ? payment.loan.loanNumber : null,
       amount: payment.amount,
       paymentDate: payment.paymentDate,
-      paymentMethod: payment.paymentMethod,
     }));
 
-    const totalCollection = collections.reduce(
-      (total, payment) => total + Number(payment.amount || 0),
-      0
-    );
+    const savings = rawSavings.map((saving) => ({
+      _id: saving._id,
+      user: saving.user ? saving.user : null,
+      amount: saving.amount,
+      savingDate: saving.savingDate,
+    }));
+
+    const totalLoanCollection = collections.reduce((total, payment) => total + Number(payment.amount || 0), 0);
+    const totalSavingsCollection = savings.reduce((total, s) => total + Number(s.amount || 0), 0);
+    const totalCollection = totalLoanCollection + totalSavingsCollection;
 
     return res.json({
       success: true,
       date: new Date(),
       committeeMember,
+      totalLoanCollection,
+      totalSavingsCollection,
       totalCollection,
       collections,
+      savings,
     });
   } catch (error) {
     console.error('Today committee collection error:', error);
