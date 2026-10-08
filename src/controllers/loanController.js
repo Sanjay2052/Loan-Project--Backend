@@ -138,7 +138,7 @@ const addPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Loan not found" });
     }
 
-    const { amount, paymentDate, paymentMethod, referenceNumber, notes } = req.body;
+    const { amount, paymentDate, paymentMethod, referenceNumber, committeeMember } = req.body;
     const paymentAmount = Number(amount);
 
     if (amount === undefined || amount === null || Number.isNaN(paymentAmount) || paymentAmount < 0) {
@@ -155,7 +155,7 @@ const addPayment = async (req, res) => {
       paymentDate: paymentDate || Date.now(),
       paymentMethod,
       referenceNumber,
-      notes,
+      committeeMember,
       collectedBy: req.admin._id
     });
 

@@ -11,6 +11,7 @@ const reportRoutes = require("./routes/reportRoutes");
 const userRoutes = require("./routes/userRoutes");
 const committeeMemberRoutes = require("./routes/committeeMemberRoutes");
 const memberRoutes = require("./routes/memberRoutes");
+const collectionRoutes = require("./routes/collectionRoutes");
 
 const app = express();
 
@@ -55,5 +56,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/committee-members", committeeMemberRoutes);
 
 app.use("/api/members", memberRoutes);
+
+app.use("/api/collections", collectionRoutes);
 
 module.exports = app;

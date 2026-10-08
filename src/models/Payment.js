@@ -23,8 +23,10 @@ const paymentSchema = new mongoose.Schema({
   referenceNumber: {
     type: String,
   },
-  notes: {
-    type: String,
+  committeeMember: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CommitteeMember',
+    required: true,
   },
   collectedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -32,6 +34,11 @@ const paymentSchema = new mongoose.Schema({
     required: true,
   }
 }, { timestamps: true });
+
+paymentSchema.index({
+  paymentDate: 1,
+  committeeMember: 1,
+});
 
 paymentSchema.index({
   loan: 1,
