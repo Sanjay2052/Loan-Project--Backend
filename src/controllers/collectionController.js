@@ -2,11 +2,22 @@ const Payment = require("../models/Payment");
 
 const getTodayCollection = async (req, res) => {
   try {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    });
+    const parts = formatter.formatToParts(new Date());
+    const year = parts.find((p) => p.type === 'year').value;
+    const month = parts.find((p) => p.type === 'month').value;
+    const day = parts.find((p) => p.type === 'day').value;
 
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+    const startStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000+05:30`;
+    const endStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T23:59:59.999+05:30`;
+
+    const start = new Date(startStr);
+    const end = new Date(endStr);
 
     const result = await Payment.aggregate([
       {
