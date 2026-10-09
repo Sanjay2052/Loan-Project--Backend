@@ -121,18 +121,63 @@ const createLoan = async (req, res) => {
 
 const getLoans = async (req, res) => {
   try {
-    const loans = await Loan.find()
-      .select('loanNumber member committeeMember loanType requestedAmount totalToCollect totalPaid principalPaid interestPaid remainingAmount status startDate')
-      .populate("member", "memberId name phone")
-      .populate("committeeMember", "name phoneNumber")
-      .populate("createdBy", "name email")
-      .sort({ createdAt: -1 })
-      .lean();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const loanType = req.query.loanType || 'all';
+    const status = req.query.status || 'all';
+
+    let filter = {};
+    if (loanType !== 'all') {
+      filter.loanType = loanType.toLowerCase();
+    }
+    if (status !== 'all') {
+      filter.status = status.toLowerCase();
+    }
+
+    if (search) {
+      const Member = require('../models/Member');
+      const matchingMembers = await Member.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ]
+      }).select('_id');
+      const memberIds = matchingMembers.map(m => m._id);
+
+      filter.$or = [
+        { loanNumber: { $regex: search, $options: 'i' } },
+        { member: { $in: memberIds } }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [loans, totalRecords] = await Promise.all([
+      Loan.find(filter)
+        .select('loanNumber member committeeMember loanType requestedAmount totalToCollect totalPaid principalPaid interestPaid remainingAmount status startDate')
+        .populate("member", "memberId name phone")
+        .populate("committeeMember", "name phoneNumber")
+        .populate("createdBy", "name email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Loan.countDocuments(filter)
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
 
     res.json({
       success: true,
-      count: loans.length,
-      loans,
+      data: loans,
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages,
+        hasNextPage: page < totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({

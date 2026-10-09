@@ -3,13 +3,16 @@ const CommitteeMember = require("../models/CommitteeMember");
 
 const getTodayCollection = async (req, res) => {
   try {
+    const queryDateStr = req.query.date;
+    const targetDate = queryDateStr ? new Date(queryDateStr) : new Date();
+
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
     });
-    const parts = formatter.formatToParts(new Date());
+    const parts = formatter.formatToParts(targetDate);
     const year = parts.find((p) => p.type === 'year').value;
     const month = parts.find((p) => p.type === 'month').value;
     const day = parts.find((p) => p.type === 'day').value;
@@ -126,7 +129,7 @@ const getTodayCollection = async (req, res) => {
 
     res.json({
       success: true,
-      date: new Date(),
+      date: targetDate,
       totalLoanCollection,
       totalSavingsCollection,
       totalCollection,
@@ -146,13 +149,16 @@ const getTodayCommitteeCollection = async (req, res) => {
   try {
     const { committeeMemberId } = req.params;
 
+    const queryDateStr = req.query.date;
+    const targetDate = queryDateStr ? new Date(queryDateStr) : new Date();
+
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
     });
-    const parts = formatter.formatToParts(new Date());
+    const parts = formatter.formatToParts(targetDate);
     const year = parts.find((p) => p.type === 'year').value;
     const month = parts.find((p) => p.type === 'month').value;
     const day = parts.find((p) => p.type === 'day').value;
@@ -215,7 +221,7 @@ const getTodayCommitteeCollection = async (req, res) => {
 
     return res.json({
       success: true,
-      date: new Date(),
+      date: targetDate,
       committeeMember,
       totalLoanCollection,
       totalSavingsCollection,
