@@ -4,7 +4,24 @@ const { clearCacheByPrefix } = require('../middleware/cacheMiddleware');
 
 const getSavingUsers = async (req, res) => {
   try {
-    const users = await User.find({ isSavingUser: true }).lean();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+
+    const filter = { isSavingUser: true };
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { phoneNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [users, totalRecords] = await Promise.all([
+      User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      User.countDocuments(filter)
+    ]);
     
     const userIds = users.map(u => u._id);
     const collections = await Saving.aggregate([
@@ -24,11 +41,23 @@ const getSavingUsers = async (req, res) => {
         name: user.name,
         initialSavings: user.savingsAmount || 0,
         collections: collected,
-        totalSavings: (user.savingsAmount || 0) + collected
+        totalSavings: collected
       };
     });
 
-    res.json({ success: true, savings });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    res.json({
+      success: true,
+      data: savings,
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages,
+        hasNextPage: page < totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -54,7 +83,7 @@ const getSavingsHistory = async (req, res) => {
         _id: user._id,
         name: user.name,
         initialSavings: user.savingsAmount || 0,
-        totalSavings: (user.savingsAmount || 0) + collectionsTotal
+        totalSavings: collectionsTotal
       },
       history
     });

@@ -33,11 +33,40 @@ const addExpense = async (req, res) => {
 
 const getExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find().sort({ expenseDate: -1 }).lean();
-    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+
+    const filter = {};
+    if (search) {
+      filter.title = { $regex: search, $options: 'i' };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [expenses, totalRecords, totalAggregation] = await Promise.all([
+      Expense.find(filter).sort({ expenseDate: -1 }).skip(skip).limit(limit).lean(),
+      Expense.countDocuments(filter),
+      Expense.aggregate([
+        { $match: filter },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ])
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
+    const totalExpenses = totalAggregation.length > 0 ? totalAggregation[0].total : 0;
+
     res.json({
       success: true,
-      expenses,
+      data: expenses,
+      totalExpenses,
+      pagination: {
+        page,
+        limit,
+        totalRecords,
+        totalPages,
+        hasNextPage: page < totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({
