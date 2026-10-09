@@ -86,7 +86,7 @@ const getTodayCollection = async (req, res) => {
     ]);
     const todayIncome = todayIncomeAgg[0]?.total || 0;
 
-    const totalInflows = totalLoanCollection + totalSavingsCollection + todayIncome;
+    const totalInflows = totalLoanCollection + totalSavingsCollection;
 
     // Calculate Old Balance
     const pastPayments = await Payment.aggregate([
@@ -97,9 +97,7 @@ const getTodayCollection = async (req, res) => {
       { $match: { savingDate: { $lt: start } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    const allInitialSavings = await User.aggregate([
-      { $group: { _id: null, total: { $sum: '$initialSavingsAmount' } } }
-    ]);
+
     const pastLoans = await Loan.aggregate([
       { $match: { createdAt: { $lt: start } } },
       { $group: { _id: null, total: { $sum: '$loanAmount' } } }
@@ -116,7 +114,6 @@ const getTodayCollection = async (req, res) => {
     const cashInPast = 
       (pastPayments[0]?.total || 0) + 
       (pastSavings[0]?.total || 0) + 
-      (allInitialSavings[0]?.total || 0) +
       (pastIncome[0]?.total || 0);
 
     const cashOutPast = 
@@ -138,7 +135,7 @@ const getTodayCollection = async (req, res) => {
     const todayLoanGiven = todayLoans[0]?.total || 0;
     const todayExpense = todayExpenses[0]?.total || 0;
 
-    const balanceBeforeOutgoing = oldBalance + totalInflows;
+    const balanceBeforeOutgoing = oldBalance + totalInflows + todayIncome;
     const availableBalance = balanceBeforeOutgoing - todayLoanGiven - todayExpense;
 
     res.json({

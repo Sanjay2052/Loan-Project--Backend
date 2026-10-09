@@ -44,22 +44,37 @@ const getIncome = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const [incomeRecords, totalRecords, totalAggregation] = await Promise.all([
+    const [incomeRecords, totalRecords, totalAggregation, dateAggregation] = await Promise.all([
       Income.find(filter).sort({ incomeDate: -1 }).skip(skip).limit(limit).lean(),
       Income.countDocuments(filter),
       Income.aggregate([
         { $match: filter },
         { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Income.aggregate([
+        { $match: filter },
+        { 
+          $group: { 
+            _id: { $dateToString: { format: "%d/%m/%Y", date: "$incomeDate", timezone: "Asia/Kolkata" } }, 
+            total: { $sum: '$amount' } 
+          } 
+        }
       ])
     ]);
 
     const totalPages = Math.ceil(totalRecords / limit);
     const totalIncome = totalAggregation.length > 0 ? totalAggregation[0].total : 0;
+    
+    const dateSubtotals = {};
+    dateAggregation.forEach(item => {
+      if (item._id) dateSubtotals[item._id] = item.total;
+    });
 
     res.json({
       success: true,
       data: incomeRecords,
       totalIncome,
+      dateSubtotals,
       pagination: {
         page,
         limit,

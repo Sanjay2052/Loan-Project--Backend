@@ -44,22 +44,37 @@ const getExpenses = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const [expenses, totalRecords, totalAggregation] = await Promise.all([
+    const [expenses, totalRecords, totalAggregation, dateAggregation] = await Promise.all([
       Expense.find(filter).sort({ expenseDate: -1 }).skip(skip).limit(limit).lean(),
       Expense.countDocuments(filter),
       Expense.aggregate([
         { $match: filter },
         { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Expense.aggregate([
+        { $match: filter },
+        { 
+          $group: { 
+            _id: { $dateToString: { format: "%d/%m/%Y", date: "$expenseDate", timezone: "Asia/Kolkata" } }, 
+            total: { $sum: '$amount' } 
+          } 
+        }
       ])
     ]);
 
     const totalPages = Math.ceil(totalRecords / limit);
     const totalExpenses = totalAggregation.length > 0 ? totalAggregation[0].total : 0;
+    
+    const dateSubtotals = {};
+    dateAggregation.forEach(item => {
+      if (item._id) dateSubtotals[item._id] = item.total;
+    });
 
     res.json({
       success: true,
       data: expenses,
       totalExpenses,
+      dateSubtotals,
       pagination: {
         page,
         limit,
