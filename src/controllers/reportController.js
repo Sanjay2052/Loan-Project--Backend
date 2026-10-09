@@ -34,7 +34,7 @@ const getReports = async (req, res) => {
           $group: {
             _id: null,
             totalLoanAmount: {
-              $sum: "$loanAmount",
+              $sum: "$requestedAmount",
             },
             totalPaid: {
               $sum: "$totalPaid",

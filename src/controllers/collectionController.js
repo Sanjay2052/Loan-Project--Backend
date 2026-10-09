@@ -100,7 +100,7 @@ const getTodayCollection = async (req, res) => {
 
     const pastLoans = await Loan.aggregate([
       { $match: { createdAt: { $lt: start } } },
-      { $group: { _id: null, total: { $sum: '$loanAmount' } } }
+      { $group: { _id: '$loanType', total: { $sum: '$requestedAmount' } } }
     ]);
     const pastExpenses = await Expense.aggregate([
       { $match: { expenseDate: { $lt: start } } },
@@ -116,8 +116,17 @@ const getTodayCollection = async (req, res) => {
       (pastSavings[0]?.total || 0) + 
       (pastIncome[0]?.total || 0);
 
+    let pastLoansTotal = 0;
+    pastLoans.forEach(item => {
+      if (item._id === 'weekly') {
+        pastLoansTotal += item.total * 0.9;
+      } else {
+        pastLoansTotal += item.total;
+      }
+    });
+
     const cashOutPast = 
-      (pastLoans[0]?.total || 0) + 
+      pastLoansTotal + 
       (pastExpenses[0]?.total || 0);
 
     const oldBalance = cashInPast - cashOutPast;
@@ -125,14 +134,21 @@ const getTodayCollection = async (req, res) => {
     // Calculate Today's Loan Given & Expenses
     const todayLoans = await Loan.aggregate([
       { $match: { createdAt: { $gte: start, $lte: end } } },
-      { $group: { _id: null, total: { $sum: '$loanAmount' } } }
+      { $group: { _id: '$loanType', total: { $sum: '$requestedAmount' } } }
     ]);
     const todayExpenses = await Expense.aggregate([
       { $match: { expenseDate: { $gte: start, $lte: end } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
 
-    const todayLoanGiven = todayLoans[0]?.total || 0;
+    let todayLoanGiven = 0;
+    todayLoans.forEach(item => {
+      if (item._id === 'weekly') {
+        todayLoanGiven += item.total * 0.9;
+      } else {
+        todayLoanGiven += item.total;
+      }
+    });
     const todayExpense = todayExpenses[0]?.total || 0;
 
     const balanceBeforeOutgoing = oldBalance + totalInflows + todayIncome;
