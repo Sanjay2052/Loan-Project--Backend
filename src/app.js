@@ -14,6 +14,7 @@ const memberRoutes = require("./routes/memberRoutes");
 const collectionRoutes = require("./routes/collectionRoutes");
 const savingRoutes = require("./routes/savingRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
+const incomeRoutes = require("./routes/incomeRoutes");
 
 const app = express();
 
@@ -63,5 +64,6 @@ app.use("/api/collections", collectionRoutes);
 
 app.use("/api/savings", savingRoutes);
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/income", incomeRoutes);
 
 module.exports = app;
