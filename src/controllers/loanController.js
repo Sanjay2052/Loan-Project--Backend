@@ -28,7 +28,36 @@ const createLoan = async (req, res) => {
       });
     }
 
-    const memberExists = await Member.findById(member);
+    const User = require("../models/User");
+    const user = await User.findById(member);
+    let resolvedMemberId = member;
+
+    if (user) {
+      if (user.member) {
+        resolvedMemberId = user.member;
+      } else {
+        let memberDoc = await Member.findOne({ phone: user.phoneNumber });
+        if (!memberDoc) {
+          memberDoc = await Member.findOne({ name: user.name });
+        }
+        
+        if (memberDoc) {
+          resolvedMemberId = memberDoc._id;
+          await User.findByIdAndUpdate(user._id, { member: resolvedMemberId });
+        } else {
+          // Create a new member if absolutely no match exists
+          const newMember = await Member.create({
+            name: user.name,
+            phone: user.phoneNumber,
+            memberId: `MEM-${Date.now()}`,
+          });
+          resolvedMemberId = newMember._id;
+          await User.findByIdAndUpdate(user._id, { member: resolvedMemberId });
+        }
+      }
+    }
+
+    const memberExists = await Member.findById(resolvedMemberId);
     if (!memberExists) {
       return res.status(404).json({ success: false, message: "Member not found" });
     }
@@ -49,7 +78,7 @@ const createLoan = async (req, res) => {
     const loanNumber = `LOAN-${Date.now()}`;
 
     const loan = await Loan.create({
-      member,
+      member: resolvedMemberId,
       committeeMember,
       loanNumber,
       loanType,
