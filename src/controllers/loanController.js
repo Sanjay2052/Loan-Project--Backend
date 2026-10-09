@@ -175,7 +175,7 @@ const addPayment = async (req, res) => {
       loan.totalPaid += paymentAmount;
       loan.remainingAmount -= paymentAmount;
     }
-    
+
     if (loan.remainingAmount <= 0) {
       loan.status = "completed";
     }
@@ -207,12 +207,14 @@ const getPayments = async (req, res) => {
       .populate("committeeMember", "name phoneNumber")
       .sort({ paymentDate: 1, createdAt: 1 });
 
-    let balance = loan.loanAmount;
+    let balance = loan.loanType === 'weekly' ? loan.totalToCollect : loan.requestedAmount;
     const history = payments.map((payment) => {
-      balance -= Number(payment.amount || 0);
+      if (payment.collectionType !== 'interest') {
+        balance -= Number(payment.amount || 0);
+      }
       return {
         ...payment.toObject(),
-        remainingBalance: balance,
+        remainingBalance: Math.max(0, balance),
       };
     });
 
@@ -333,7 +335,7 @@ const editPayment = async (req, res) => {
       success: true,
       message: 'Collection updated successfully'
     });
-    
+
     clearCacheByPrefix('/api/loans');
     clearCacheByPrefix('/api/reports');
   } catch (error) {
@@ -349,7 +351,7 @@ const updateLoan = async (req, res) => {
     if (!loan) return res.status(404).json({ success: false, message: "Loan not found" });
 
     const { requestedAmount, loanType, committeeMember } = req.body;
-    
+
     if (requestedAmount) {
       const newAmount = Number(requestedAmount);
       if (loan.loanType === 'monthly' && newAmount < loan.principalPaid) {
@@ -370,7 +372,7 @@ const updateLoan = async (req, res) => {
     } else {
       loan.remainingAmount = Math.max(0, loan.requestedAmount - loan.totalPaid);
     }
-    
+
     loan.status = loan.remainingAmount <= 0 ? 'completed' : 'active';
     await loan.save();
 
@@ -402,7 +404,7 @@ const cancelLoan = async (req, res) => {
   try {
     const loan = await Loan.findById(req.params.id);
     if (!loan) return res.status(404).json({ success: false, message: "Loan not found" });
-    
+
     if (req.body.status === 'cancelled') {
       loan.status = 'cancelled';
       await loan.save();
