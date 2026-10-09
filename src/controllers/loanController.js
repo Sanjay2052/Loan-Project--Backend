@@ -93,7 +93,7 @@ const createLoan = async (req, res) => {
 const getLoans = async (req, res) => {
   try {
     const loans = await Loan.find()
-      .select('loanNumber member committeeMember loanType requestedAmount totalPaid principalPaid interestPaid remainingAmount status startDate')
+      .select('loanNumber member committeeMember loanType requestedAmount totalToCollect totalPaid principalPaid interestPaid remainingAmount status startDate')
       .populate("member", "memberId name phone")
       .populate("committeeMember", "name phoneNumber")
       .populate("createdBy", "name email")
@@ -228,7 +228,7 @@ const getPayments = async (req, res) => {
 const getLoansByMember = async (req, res) => {
   try {
     const loans = await Loan.find({ member: req.params.id })
-      .select('loanNumber loanType requestedAmount amountGiven totalPaid principalPaid interestPaid remainingAmount status startDate')
+      .select('loanNumber loanType requestedAmount totalToCollect amountGiven totalPaid principalPaid interestPaid remainingAmount status startDate')
       .populate("member", "memberId name phone address")
       .sort({ createdAt: -1 })
       .lean();
@@ -246,7 +246,7 @@ const getLoansByMember = async (req, res) => {
 const getLoansByCommitteeMember = async (req, res) => {
   try {
     const loans = await Loan.find({ committeeMember: req.params.id })
-      .select('loanNumber member loanType requestedAmount totalPaid principalPaid interestPaid remainingAmount status')
+      .select('loanNumber member loanType requestedAmount totalToCollect totalPaid principalPaid interestPaid remainingAmount status')
       .populate("member", "memberId name phone address")
       .sort({ createdAt: -1 })
       .lean();
