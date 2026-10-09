@@ -2,6 +2,9 @@ const Member = require("../models/Member");
 const Loan = require("../models/Loan");
 const Saving = require("../models/Saving");
 const User = require("../models/User");
+const Payment = require("../models/Payment");
+const Expense = require("../models/Expense");
+const Income = require("../models/Income");
 
 const getReports = async (req, res) => {
   try {
@@ -12,6 +15,9 @@ const getReports = async (req, res) => {
       loanSummary,
       savingsSummary,
       usersSummary,
+      totalPayments,
+      totalExpenses,
+      totalIncome
     ] = await Promise.all([
       Member.countDocuments(),
 
@@ -61,33 +67,39 @@ const getReports = async (req, res) => {
           },
         },
       ]),
+
+      Payment.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]),
+      Expense.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]),
+      Income.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]),
     ]);
 
-    const totalSavings = (savingsSummary[0]?.total || 0) + (usersSummary[0]?.total || 0);
-    const totalOutstanding = loanSummary[0]?.totalOutstanding || 0;
-    const overallBalance = totalOutstanding + totalSavings;
+    const loanTotalPaid = loanSummary[0]?.totalPaid || 0;
+    const loanTotalOutstanding = loanSummary[0]?.totalOutstanding || 0;
+    const loanTotalAmount = loanSummary[0]?.totalLoanAmount || 0;
+    const savingsCollected = savingsSummary[0]?.total || 0;
+
+    const totalIncomeValue = totalIncome[0]?.total || 0;
+    const totalPaymentsValue = totalPayments[0]?.total || 0;
+    const totalExpensesValue = totalExpenses[0]?.total || 0;
+
+    const lastCollectionBalance = totalPaymentsValue + savingsCollected + totalIncomeValue - loanTotalAmount - totalExpensesValue;
+    const total = loanTotalOutstanding + lastCollectionBalance;
+    const profitOrBalances = total - savingsCollected;
 
     res.json({
       success: true,
 
       reports: {
         totalMembers,
-
         activeLoans,
-
         completedLoans,
-
-        totalLoanAmount:
-          loanSummary[0]?.totalLoanAmount || 0,
-
-        totalPaid:
-          loanSummary[0]?.totalPaid || 0,
-
-        totalOutstanding,
-
-        totalSavings,
-
-        overallBalance,
+        totalLoanAmount: loanTotalAmount,
+        totalPaid: loanTotalPaid,
+        totalOutstanding: loanTotalOutstanding,
+        totalSavings: savingsCollected,
+        lastCollectionBalance,
+        total,
+        profitOrBalances,
       },
     });
   } catch (error) {
