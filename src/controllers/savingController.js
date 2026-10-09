@@ -39,7 +39,7 @@ const getSavingUsers = async (req, res) => {
       return {
         _id: user._id,
         name: user.name,
-        initialSavings: user.savingsAmount || 0,
+        initialSavings: user.initialSavingsAmount || 0,
         collections: collected,
         totalSavings: collected
       };
@@ -82,7 +82,7 @@ const getSavingsHistory = async (req, res) => {
       user: {
         _id: user._id,
         name: user.name,
-        initialSavings: user.savingsAmount || 0,
+        initialSavings: user.initialSavingsAmount || 0,
         totalSavings: collectionsTotal
       },
       history
