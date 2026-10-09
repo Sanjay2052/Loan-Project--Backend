@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { addIncome, getIncome } = require("../controllers/incomeController");
-const { protect } = require("../middleware/authMiddleware");
+const protect = require("../middleware/authMiddleware");
 
 router.use(protect);
 
