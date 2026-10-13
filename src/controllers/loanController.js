@@ -40,7 +40,7 @@ const createLoan = async (req, res) => {
         if (!memberDoc) {
           memberDoc = await Member.findOne({ name: user.name });
         }
-        
+
         if (memberDoc) {
           resolvedMemberId = memberDoc._id;
           await User.findByIdAndUpdate(user._id, { member: resolvedMemberId });
