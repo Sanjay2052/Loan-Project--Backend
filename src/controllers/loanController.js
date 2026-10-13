@@ -1,7 +1,7 @@
 const Loan = require("../models/Loan");
 const Member = require("../models/Member");
 const Payment = require("../models/Payment");
-const { clearCacheByPrefix } = require("../middleware/cacheMiddleware");
+const { clearCacheByPrefix, clearCacheTags } = require("../middleware/cacheMiddleware");
 
 const createLoan = async (req, res) => {
   try {
@@ -108,6 +108,7 @@ const createLoan = async (req, res) => {
 
     clearCacheByPrefix('/api/loans');
     clearCacheByPrefix('/api/reports');
+    clearCacheTags(['reports', 'collections']);
 
   } catch (error) {
     console.error("Create loan error:", error);
@@ -264,6 +265,7 @@ const addPayment = async (req, res) => {
 
     clearCacheByPrefix('/api/loans');
     clearCacheByPrefix('/api/reports');
+    clearCacheTags(['reports', 'collections']);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -412,6 +414,8 @@ const editPayment = async (req, res) => {
 
     clearCacheByPrefix('/api/loans');
     clearCacheByPrefix('/api/reports');
+    clearCacheTags(['reports', 'collections']);
+
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   } finally {
@@ -452,6 +456,7 @@ const updateLoan = async (req, res) => {
 
     res.json({ success: true, message: 'Loan updated successfully', loan });
     clearCacheByPrefix('/api/loans');
+    clearCacheTags(['loans', 'reports']);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -469,6 +474,7 @@ const deleteLoan = async (req, res) => {
     await Loan.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Loan deleted successfully' });
     clearCacheByPrefix('/api/loans');
+    clearCacheTags(['loans', 'reports', 'collections']);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -484,6 +490,7 @@ const cancelLoan = async (req, res) => {
       await loan.save();
       res.json({ success: true, message: 'Loan cancelled successfully' });
       clearCacheByPrefix('/api/loans');
+      clearCacheTags(['loans', 'reports', 'collections']);
     } else {
       res.status(400).json({ success: false, message: "Invalid status update" });
     }

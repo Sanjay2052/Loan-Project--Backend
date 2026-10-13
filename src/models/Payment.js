@@ -40,14 +40,17 @@ const paymentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-paymentSchema.index({
-  paymentDate: 1,
-  committeeMember: 1,
-});
+// committeeMember first: optimal for getTodayCommitteeCollection
+// (match committeeMember, then scope paymentDate range)
+paymentSchema.index({ committeeMember: 1, paymentDate: -1 });
 
+// loan + date: used by getPayments (history for a single loan)
 paymentSchema.index({
   loan: 1,
   paymentDate: -1,
 });
+
+// paymentDate only: used by $facet "all payments before date" aggregations
+paymentSchema.index({ paymentDate: -1 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

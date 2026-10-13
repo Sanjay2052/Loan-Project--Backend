@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Saving = require('../models/Saving');
-const { clearCacheByPrefix } = require('../middleware/cacheMiddleware');
+const { clearCacheByPrefix, clearCacheTags } = require('../middleware/cacheMiddleware');
 
 const getSavingUsers = async (req, res) => {
   try {
@@ -111,6 +111,7 @@ const addSaving = async (req, res) => {
 
     clearCacheByPrefix('/api/savings');
     clearCacheByPrefix('/api/users');
+    clearCacheTags(['collections', 'reports']);
     res.status(201).json({ success: true, message: 'Saving added successfully', saving });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -141,6 +142,7 @@ const editSaving = async (req, res) => {
 
     clearCacheByPrefix('/api/savings');
     clearCacheByPrefix('/api/users');
+    clearCacheTags(['collections', 'reports']);
     res.json({ success: true, message: 'Saving updated successfully', saving });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -153,6 +155,7 @@ const deleteSaving = async (req, res) => {
     await Saving.findByIdAndDelete(savingId);
     clearCacheByPrefix('/api/savings');
     clearCacheByPrefix('/api/users');
+    clearCacheTags(['collections', 'reports']);
     res.json({ success: true, message: 'Saving deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

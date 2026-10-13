@@ -35,4 +35,10 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Supports getSavingUsers filter + sort: isSavingUser:true, sort createdAt:-1
+userSchema.index({ isSavingUser: 1, createdAt: -1 });
+
+// Supports phone lookups and search
+userSchema.index({ phoneNumber: 1 });
+
 module.exports = mongoose.model("User", userSchema);

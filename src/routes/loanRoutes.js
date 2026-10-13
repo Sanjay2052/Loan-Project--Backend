@@ -19,20 +19,26 @@ const router = express.Router();
 
 router.use(protect);
 
+// Write operations → handled by controller cache-clear
 router.post("/", createLoan);
 
-router.get("/", cacheMiddleware(15000), getLoans);
+// List with pagination — 30 s cache tagged 'loans'
+router.get("/", cacheMiddleware(30000, ["loans"]), getLoans);
 
-router.get("/:id", cacheMiddleware(15000), getLoanById);
+// Single loan detail — 30 s cache tagged 'loans'
+router.get("/:id", cacheMiddleware(30000, ["loans"]), getLoanById);
 
 router.put("/:id", updateLoan);
 router.delete("/:id", deleteLoan);
 router.put("/:id/status", cancelLoan);
 
+// Payment write
 router.post("/:loanId/payments", addPayment);
 
-router.get("/:loanId/payments", cacheMiddleware(10000), getPayments);
+// Payment history for a loan — 20 s cache tagged 'loans'
+router.get("/:loanId/payments", cacheMiddleware(20000, ["loans"]), getPayments);
 
+// Payment edit
 router.put("/:loanId/payments/:paymentId", editPayment);
 
 module.exports = router;

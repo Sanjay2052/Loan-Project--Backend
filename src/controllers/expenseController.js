@@ -1,4 +1,5 @@
 const Expense = require("../models/Expense");
+const { clearCacheTags } = require("../middleware/cacheMiddleware");
 
 const addExpense = async (req, res) => {
   try {
@@ -23,6 +24,9 @@ const addExpense = async (req, res) => {
       expense,
       message: "Expense added successfully",
     });
+
+    // Invalidate any cached response that depends on expenses or the dashboard
+    clearCacheTags(["expenses", "reports", "collections"]);
   } catch (error) {
     res.status(500).json({
       success: false,

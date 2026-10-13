@@ -9,6 +9,7 @@ const { cacheMiddleware } = require("../middleware/cacheMiddleware");
 
 const router = express.Router();
 
-router.get("/", protect, cacheMiddleware(10000), getReports);
+router.get("/", protect, cacheMiddleware(180000, ["reports"]), getReports);
+
 
 module.exports = router;

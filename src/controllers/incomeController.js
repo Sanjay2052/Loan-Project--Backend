@@ -1,4 +1,5 @@
 const Income = require("../models/Income");
+const { clearCacheTags } = require("../middleware/cacheMiddleware");
 
 const addIncome = async (req, res) => {
   try {
@@ -23,6 +24,9 @@ const addIncome = async (req, res) => {
       income,
       message: "Income added successfully",
     });
+
+    // Invalidate cached responses that depend on income or the dashboard
+    clearCacheTags(["income", "reports", "collections"]);
   } catch (error) {
     res.status(500).json({
       success: false,

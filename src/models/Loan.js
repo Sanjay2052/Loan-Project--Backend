@@ -90,4 +90,8 @@ loanSchema.index({ committeeMember: 1 });
 loanSchema.index({ status: 1 });
 loanSchema.index({ createdAt: -1 });
 
+// Compound index for $facet aggregations that match createdAt range then group by loanType
+// (used in collectionController and reportController balance calculations)
+loanSchema.index({ loanType: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Loan", loanSchema);

@@ -35,4 +35,10 @@ const savingSchema = new mongoose.Schema({
 
 savingSchema.index({ user: 1, savingDate: -1 });
 
+// Used by getTodayCommitteeCollection: filter by committeeMember + savingDate range
+savingSchema.index({ committeeMember: 1, savingDate: -1 });
+
+// Used by $facet date-range aggregations in collectionController / reportController
+savingSchema.index({ savingDate: -1 });
+
 module.exports = mongoose.model('Saving', savingSchema);
